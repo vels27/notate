@@ -36,7 +36,6 @@ import com.alexdremov.notate.config.PaperSize
 import com.alexdremov.notate.data.CanvasType
 
 enum class DialogType {
-    ADD_PROJECT,
     CREATE_FOLDER,
     CREATE_CANVAS,
     MANAGE_TAGS,

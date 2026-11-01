@@ -47,9 +47,7 @@ fun Sidebar(
     selectedProject: ProjectConfig?,
     selectedTag: Tag?,
     onProjectSelected: (ProjectConfig) -> Unit,
-    onProjectLongClick: (ProjectConfig) -> Unit,
     onTagSelected: (Tag) -> Unit,
-    onAddProject: () -> Unit,
     onManageTags: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -65,11 +63,11 @@ fun Sidebar(
                     .fillMaxHeight()
                     .padding(vertical = 16.dp, horizontal = 12.dp),
         ) {
-            // Projects Section
+            // Single built-in notes list (no separate projects, no location picking)
             SidebarHeader(
-                title = "Projects",
-                actionIcon = Icons.Default.Add,
-                onActionClick = onAddProject,
+                title = "Notes",
+                actionIcon = null,
+                onActionClick = null,
             )
 
             LazyColumn(
@@ -79,7 +77,7 @@ fun Sidebar(
                 if (projects.isEmpty()) {
                     item {
                         Text(
-                            text = "No projects",
+                            text = "No notes list",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 12.dp, top = 8.dp),
@@ -92,7 +90,6 @@ fun Sidebar(
                         icon = Icons.Default.Folder,
                         isSelected = selectedProject?.id == project.id,
                         onClick = { onProjectSelected(project) },
-                        onLongClick = { onProjectLongClick(project) },
                     )
                 }
 

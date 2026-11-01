@@ -4,9 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,7 +30,6 @@ import com.alexdremov.notate.data.ProjectItem
 import com.alexdremov.notate.data.RemoteStorageType
 import com.alexdremov.notate.data.SortOption
 import com.alexdremov.notate.ui.home.*
-import com.alexdremov.notate.ui.home.components.DeleteConfirmationDialog
 import com.alexdremov.notate.ui.theme.NotateTheme
 import com.alexdremov.notate.util.Logger
 import com.alexdremov.notate.vm.HomeViewModel
@@ -143,47 +140,7 @@ fun MainScreen(
     var showSettingsDialog by remember { mutableStateOf(false) }
 
     // Project Actions State
-    var projectToDelete by remember { mutableStateOf<com.alexdremov.notate.data.ProjectConfig?>(null) }
-    var projectToManage by remember { mutableStateOf<com.alexdremov.notate.data.ProjectConfig?>(null) }
-    var projectToRename by remember { mutableStateOf<com.alexdremov.notate.data.ProjectConfig?>(null) }
     var projectToSync by remember { mutableStateOf<com.alexdremov.notate.data.ProjectConfig?>(null) }
-
-    // Temporary state for Project Creation flow
-    var pendingProjectName by remember { mutableStateOf<String?>(null) }
-
-    // Folder Picker for "Add Project"
-    val projectLocationPicker =
-        rememberLauncherForActivityResult(
-            contract =
-                object : ActivityResultContracts.OpenDocumentTree() {
-                    override fun createIntent(
-                        context: android.content.Context,
-                        input: android.net.Uri?,
-                    ): Intent {
-                        val intent = super.createIntent(context, input)
-                        intent.putExtra(Intent.EXTRA_LOCAL_ONLY, false)
-                        intent.addFlags(
-                            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                                Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
-                        )
-                        return intent
-                    }
-                },
-        ) { uri ->
-            if (uri != null && pendingProjectName != null) {
-                val flags =
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                try {
-                    context.contentResolver.takePersistableUriPermission(uri, flags)
-                } catch (e: Exception) {
-                    // Ignore if already granted or failed
-                }
-                viewModel.addProject(pendingProjectName!!, uri.toString())
-                pendingProjectName = null
-            }
-        }
 
     // Back Handler
     val isAtRoot = breadcrumbs.size <= 1
@@ -208,9 +165,7 @@ fun MainScreen(
                 selectedProject = currentProject,
                 selectedTag = selectedTag,
                 onProjectSelected = { viewModel.openProject(it) },
-                onProjectLongClick = { projectToManage = it },
                 onTagSelected = { viewModel.selectTag(it) },
-                onAddProject = { showNameDialog = DialogType.ADD_PROJECT },
                 onManageTags = { showNameDialog = DialogType.MANAGE_TAGS },
                 onSettingsClick = { showSettingsDialog = true },
             )
@@ -274,13 +229,11 @@ fun MainScreen(
                                 }
                             }
                         } else {
-                            // Project List Actions
+                            // No project selection screen: only the single notes list exists,
+                            // which is opened automatically on startup.
                             if (!isPickerMode) {
                                 IconButton(onClick = { showSettingsDialog = true }) {
                                     Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                                }
-                                IconButton(onClick = { showNameDialog = DialogType.ADD_PROJECT }) {
-                                    Icon(Icons.Filled.Add, contentDescription = "Add Project")
                                 }
                             }
                         }
@@ -296,7 +249,7 @@ fun MainScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = if (lockedProjectId != null) "Loading project..." else "Select a project from the sidebar",
+                            text = if (lockedProjectId != null) "Loading project..." else "Loading notes...",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -402,59 +355,7 @@ fun MainScreen(
         }
     }
 
-    // Handle Project Actions Dialogs
-    val manageTarget = projectToManage
-    if (manageTarget != null) {
-        AlertDialog(
-            modifier = Modifier.border(2.dp, Color.Black, RoundedCornerShape(28.dp)),
-            onDismissRequest = { projectToManage = null },
-            title = { Text("Actions for \"${manageTarget.name}\"") },
-            confirmButton = {},
-            dismissButton = {
-                OutlinedButton(onClick = { projectToManage = null }) {
-                    Text("Close")
-                }
-            },
-            text = {
-                Column(Modifier.fillMaxWidth()) {
-                    OutlinedButton(
-                        onClick = {
-                            projectToSync = manageTarget
-                            projectToManage = null
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Synchronization", color = Color.Black)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedButton(
-                        onClick = {
-                            projectToRename = manageTarget
-                            projectToManage = null
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Rename", color = Color.Black)
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedButton(
-                        onClick = {
-                            projectToDelete = manageTarget
-                            projectToManage = null
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Remove Project", color = Color.Red)
-                    }
-                }
-            },
-        )
-    }
-
+    // Handle Sync Dialog for the single notes list
     val syncTarget = projectToSync
     if (syncTarget != null) {
         ProjectSyncConfigDialog(
@@ -463,32 +364,6 @@ fun MainScreen(
             onSyncNow = {
                 viewModel.syncProject(syncTarget.id)
                 projectToSync = null
-            },
-        )
-    }
-
-    val renameTarget = projectToRename
-    if (renameTarget != null) {
-        TextInputDialog(
-            title = "Rename Project",
-            initialValue = renameTarget.name,
-            confirmText = "Rename",
-            onDismiss = { projectToRename = null },
-            onConfirm = { newName ->
-                viewModel.renameProject(renameTarget, newName)
-                projectToRename = null
-            },
-        )
-    }
-
-    val deleteTarget = projectToDelete
-    if (deleteTarget != null) {
-        DeleteConfirmationDialog(
-            itemName = deleteTarget.name,
-            onDismiss = { projectToDelete = null },
-            onConfirm = {
-                viewModel.removeProject(deleteTarget)
-                projectToDelete = null
             },
         )
     }
@@ -572,17 +447,12 @@ fun MainScreen(
             )
         }
 
-        DialogType.ADD_PROJECT, DialogType.CREATE_FOLDER -> {
+        DialogType.CREATE_FOLDER -> {
             TextInputDialog(
-                title = if (showNameDialog == DialogType.ADD_PROJECT) "New Project" else "New Folder",
+                title = "New Folder",
                 onDismiss = { showNameDialog = null },
                 onConfirm = { name ->
-                    if (showNameDialog == DialogType.ADD_PROJECT) {
-                        pendingProjectName = name
-                        projectLocationPicker.launch(null)
-                    } else {
-                        viewModel.createFolder(name)
-                    }
+                    viewModel.createFolder(name)
                     showNameDialog = null
                 },
             )

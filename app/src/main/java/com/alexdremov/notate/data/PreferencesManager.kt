@@ -323,7 +323,7 @@ object PreferencesManager {
         }
     }
 
-    private fun saveProjects(
+    fun saveProjects(
         context: Context,
         list: List<ProjectConfig>,
     ) {
