@@ -43,6 +43,14 @@ data class FavoriteColors(
 
 object PreferencesManager {
     private const val PREFS_NAME = "notate_prefs"
+
+    /**
+     * The single built-in notes list. It lives in app-private storage, so the user
+     * never picks a save location and there are no separate projects.
+     */
+    const val DEFAULT_PROJECT_ID = "default"
+    const val DEFAULT_PROJECT_NAME = "Notes"
+
     private const val KEY_PROJECTS = "projects_list"
     private const val KEY_TOOLBAR_ITEMS = "toolbar_items_config"
     private const val KEY_COLORS = "favorite_colors"
@@ -250,7 +258,26 @@ object PreferencesManager {
     }
 
     fun getProjects(context: Context): List<ProjectConfig> {
-        val data = getPrefs(context).getString(KEY_PROJECTS, null) ?: return emptyList()
+        // Single notes list mode: the app always uses exactly one built-in project
+        // that stores all notes in app-private storage (no user-selected location).
+        val default = defaultProject()
+        val stored = getStoredProjects(context)
+        if (stored != listOf(default)) {
+            saveProjects(context, listOf(default))
+        }
+        return listOf(default)
+    }
+
+    private fun defaultProject(): ProjectConfig =
+        ProjectConfig(
+            id = DEFAULT_PROJECT_ID,
+            name = DEFAULT_PROJECT_NAME,
+            uri = "", // empty uri -> internal local storage
+        )
+
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+    private fun getStoredProjects(context: Context): List<ProjectConfig>? {
+        val data = getPrefs(context).getString(KEY_PROJECTS, null) ?: return null
         return try {
             val bytes = Base64.decode(data, Base64.DEFAULT)
             protoBuf.decodeFromByteArray(ListSerializer(ProjectConfig.serializer()), bytes)

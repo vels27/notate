@@ -54,7 +54,7 @@ class HomeViewModel(
     private val _breadcrumbs = MutableStateFlow<List<BreadcrumbItem>>(emptyList())
     val breadcrumbs: StateFlow<List<BreadcrumbItem>> = _breadcrumbs.asStateFlow()
 
-    private val _title = MutableStateFlow("My Projects")
+    private val _title = MutableStateFlow(PreferencesManager.DEFAULT_PROJECT_NAME)
     val title: StateFlow<String> = _title.asStateFlow()
 
     // --- State: Tags ---
@@ -76,9 +76,35 @@ class HomeViewModel(
         loadProjects()
         loadTags()
         loadSortOption()
+        // Open the single notes list automatically on startup
+        openDefaultProject()
         startIndexing()
         observeSaveStatus()
         observeGlobalSync()
+    }
+
+    /**
+     * Ensures prefs contain exactly the single built-in "Notes" project
+     * (dropping any legacy projects) and returns it.
+     */
+    private fun ensureDefaultProject(): ProjectConfig {
+        val default =
+            ProjectConfig(
+                id = PreferencesManager.DEFAULT_PROJECT_ID,
+                name = PreferencesManager.DEFAULT_PROJECT_NAME,
+                uri = "", // empty uri -> internal local storage
+            )
+        if (PreferencesManager.getProjects(getApplication()) != listOf(default)) {
+            PreferencesManager.saveProjects(getApplication(), listOf(default))
+        }
+        return default
+    }
+
+    private fun openDefaultProject() {
+        val default = _projects.value.find { it.id == PreferencesManager.DEFAULT_PROJECT_ID } ?: return
+        if (_currentProject.value?.id != default.id) {
+            openProject(default)
+        }
     }
 
     private fun observeSaveStatus() {
@@ -206,7 +232,7 @@ class HomeViewModel(
     }
 
     private fun loadProjects() {
-        _projects.value = PreferencesManager.getProjects(getApplication())
+        _projects.value = listOf(ensureDefaultProject())
     }
 
     private fun loadTags() {
@@ -277,7 +303,7 @@ class HomeViewModel(
 
         val project = _currentProject.value
         if (project == null) {
-            _title.value = "My Projects"
+            _title.value = PreferencesManager.DEFAULT_PROJECT_NAME
             return
         }
 
@@ -285,7 +311,7 @@ class HomeViewModel(
         val root = repository?.getRootPath()
 
         if (current == null || current == root) {
-            _title.value = "Project: ${project.name}"
+            _title.value = PreferencesManager.DEFAULT_PROJECT_NAME
         } else {
             val folderName =
                 if (current.startsWith("content://")) {
@@ -355,27 +381,17 @@ class HomeViewModel(
             SortOption.DATE_OLDEST -> items.sortedBy { it.lastModified }
         }
 
-    // --- Project Management ---
+    // --- Project Management (single built-in notes list) ---
 
     fun addProject(
         name: String,
         uri: String,
     ) {
-        val config =
-            ProjectConfig(
-                id = UUID.randomUUID().toString(),
-                name = name,
-                uri = uri,
-            )
-        PreferencesManager.addProject(getApplication(), config)
-        loadProjects()
-        startIndexing()
+        // Separate projects are not supported anymore: all notes live in one list.
     }
 
     fun removeProject(project: ProjectConfig) {
-        PreferencesManager.removeProject(getApplication(), project.id)
-        loadedRepositories.remove(project.id)
-        loadProjects()
+        // The single notes list cannot be removed.
     }
 
     fun openProject(project: ProjectConfig) {
@@ -559,9 +575,8 @@ class HomeViewModel(
         val repo = repository ?: return
         val current = _currentPath.value
 
-        // If we are at the root of the repo (Project Root), close the project
+        // If we are at the root of the single notes list, stay there (no project selection screen)
         if (current == null || current == repo.getRootPath()) {
-            closeProject()
             return
         }
 
@@ -735,9 +750,7 @@ class HomeViewModel(
         project: ProjectConfig,
         newName: String,
     ) {
-        val updated = project.copy(name = newName)
-        PreferencesManager.updateProject(getApplication(), updated)
-        loadProjects()
+        // The single notes list cannot be renamed.
     }
 
     fun refresh() {
