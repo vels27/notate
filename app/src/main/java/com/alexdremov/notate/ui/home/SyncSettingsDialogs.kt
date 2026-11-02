@@ -1,8 +1,5 @@
 package com.alexdremov.notate.ui.home
 
-import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,13 +23,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.alexdremov.notate.data.*
-import com.alexdremov.notate.util.Logger
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.Scope
-import com.google.api.services.drive.DriveScopes
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -102,7 +92,7 @@ fun EditRemoteStorageDialog(
     val context = LocalContext.current
 
     var name by remember { mutableStateOf(storage?.name ?: "") }
-    var type by remember { mutableStateOf(storage?.type ?: RemoteStorageType.WEBDAV) }
+    val type = RemoteStorageType.WEBDAV
     var baseUrl by remember { mutableStateOf(storage?.baseUrl ?: "") }
     var username by remember { mutableStateOf(storage?.username ?: "") }
     var password by remember {
@@ -112,40 +102,6 @@ fun EditRemoteStorageDialog(
     var testStatus by remember { mutableStateOf<String?>(null) }
     var isTesting by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-
-    // Check for existing signed-in account if in Add mode or if username is empty
-    LaunchedEffect(Unit) {
-        if (username.isBlank() && type == RemoteStorageType.GOOGLE_DRIVE) {
-            val account = GoogleSignIn.getLastSignedInAccount(context)
-            if (account != null && GoogleSignIn.hasPermissions(account, Scope(DriveScopes.DRIVE_FILE))) {
-                username = account.email ?: ""
-                if (name.isBlank()) {
-                    name = "Google Drive ${account.email}"
-                }
-            }
-        }
-    }
-
-    val launcher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.StartActivityForResult(),
-        ) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                try {
-                    val account = task.getResult(ApiException::class.java)
-                    username = account.email ?: ""
-                    if (name.isBlank()) {
-                        name = "Google Drive ${account.email}"
-                    }
-                } catch (e: ApiException) {
-                    Logger.e("SyncSettings", "Sign-in failed: ${e.statusCode}", e, showToUser = true)
-                }
-            } else {
-                // Handle cancellation if needed, or other result codes
-                // e.g. if result.resultCode == Activity.RESULT_CANCELED
-            }
-        }
 
     AlertDialog(
         modifier = Modifier.border(2.dp, Color.Black, RoundedCornerShape(28.dp)),
@@ -161,66 +117,25 @@ fun EditRemoteStorageDialog(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Type", style = MaterialTheme.typography.titleSmall)
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = type == RemoteStorageType.WEBDAV, onClick = { type = RemoteStorageType.WEBDAV })
-                    Text("WebDAV", modifier = Modifier.clickable { type = RemoteStorageType.WEBDAV })
-                    Spacer(modifier = Modifier.width(16.dp))
-                    RadioButton(selected = type == RemoteStorageType.GOOGLE_DRIVE, onClick = { type = RemoteStorageType.GOOGLE_DRIVE })
-                    Text("Google Drive", modifier = Modifier.clickable { type = RemoteStorageType.GOOGLE_DRIVE })
-                }
-
-                if (type == RemoteStorageType.WEBDAV) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = baseUrl,
-                        onValueChange = { baseUrl = it },
-                        label = { Text("Base URL") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        label = { Text("Username") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Password / App Password") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    if (username.isNotBlank()) {
-                        Text("Signed in as: $username", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF1B5E20))
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val gso =
-                                GoogleSignInOptions
-                                    .Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                                    .requestEmail()
-                                    .requestScopes(Scope(DriveScopes.DRIVE_FILE))
-                                    .build()
-                            val client = GoogleSignIn.getClient(context, gso)
-                            launcher.launch(client.signInIntent)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(if (username.isBlank()) "Sign in with Google" else "Change Account")
-                    }
-
-                    if (username.isBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Authentication required.", style = MaterialTheme.typography.bodySmall, color = Color.Red)
-                    }
-                }
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    label = { Text("Base URL") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password / App Password") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -232,11 +147,7 @@ fun EditRemoteStorageDialog(
                                 testStatus = "Testing..."
                                 try {
                                     val config = RemoteStorageConfig("", "", type, baseUrl, username)
-                                    val provider =
-                                        when (type) {
-                                            RemoteStorageType.WEBDAV -> WebDavProvider(config, password)
-                                            RemoteStorageType.GOOGLE_DRIVE -> GoogleDriveProvider(context, config)
-                                        }
+                                    val provider = WebDavProvider(config, password)
                                     if (provider.testConnection()) {
                                         testStatus = "Success!"
                                     } else {
@@ -249,12 +160,7 @@ fun EditRemoteStorageDialog(
                                 }
                             }
                         },
-                        enabled =
-                            !isTesting &&
-                                (
-                                    type == RemoteStorageType.WEBDAV && baseUrl.isNotBlank() ||
-                                        type == RemoteStorageType.GOOGLE_DRIVE && username.isNotBlank()
-                                ),
+                        enabled = !isTesting && baseUrl.isNotBlank(),
                     ) {
                         if (isTesting) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
@@ -288,7 +194,7 @@ fun EditRemoteStorageDialog(
                         onConfirm(newConfig, password)
                     }
                 },
-                enabled = type != RemoteStorageType.GOOGLE_DRIVE || username.isNotBlank(),
+                enabled = name.isNotBlank(),
             ) {
                 Text("Save")
             }

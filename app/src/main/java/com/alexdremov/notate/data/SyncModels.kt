@@ -8,8 +8,8 @@ enum class RemoteStorageType {
     @ProtoNumber(1)
     WEBDAV,
 
-    @ProtoNumber(2)
-    GOOGLE_DRIVE,
+    // GOOGLE_DRIVE (was @ProtoNumber(2)) — removed: integration dropped.
+    // Unknown values from old data fall back to WEBDAV via ignoreUnknownKeys.
 }
 
 @Serializable
