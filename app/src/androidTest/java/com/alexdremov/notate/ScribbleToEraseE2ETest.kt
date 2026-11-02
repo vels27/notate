@@ -24,7 +24,7 @@ class ScribbleToEraseE2ETest {
             baselineStroke.add(StylusPoint(x = 100f + (i * 10f), y = 300f))
         }
         
-        onView(withId(R.id.canvas_view))
+        onView(withId(R.id.canvasView))
             .perform(drawWithStylus(baselineStroke))
 
         // Give the UI thread a moment to commit the stroke to the model
@@ -42,7 +42,7 @@ class ScribbleToEraseE2ETest {
 
         // You will visually see the zig-zag draw, and then instantly disappear 
         // along with the underlying baseline stroke!
-        onView(withId(R.id.canvas_view))
+        onView(withId(R.id.canvasView))
             .perform(drawWithStylus(scribbleGesture))
 
         // 3. (Optional) You can add an assertion here to verify InfiniteCanvasModel 

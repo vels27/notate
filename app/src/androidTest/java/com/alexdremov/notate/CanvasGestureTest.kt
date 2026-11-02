@@ -34,7 +34,7 @@ class CanvasGestureTest {
 
         // You will literally watch this stroke being drawn on the emulator screen!
         // Make sure the ID matches your OnyxCanvasView ID in XML
-        onView(withId(R.id.canvas_view))
+        onView(withId(R.id.canvasView))
             .perform(drawWithStylus(points))
             
         // You can then assert against the CanvasController or InfiniteCanvasModel
