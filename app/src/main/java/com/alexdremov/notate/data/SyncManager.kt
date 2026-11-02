@@ -32,7 +32,6 @@ class SyncManager(
     private val providerFactory: (Context, RemoteStorageConfig, String) -> RemoteStorageProvider = { ctx, config, pass ->
         when (config.type) {
             RemoteStorageType.WEBDAV -> WebDavProvider(config, pass)
-            RemoteStorageType.GOOGLE_DRIVE -> GoogleDriveProvider(ctx, config)
         }
     },
 ) {

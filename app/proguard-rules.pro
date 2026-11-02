@@ -24,11 +24,5 @@
 # PDFBox optional JPEG2000 support
 -dontwarn com.gemalto.jp2.**
 
-# Google API Client / Google Drive API
+# Keep attributes (used by kotlinx.serialization and general reflection safety)
 -keepattributes Signature,RuntimeVisibleAnnotations,AnnotationDefault
--keepclassmembers class * {
-  @com.google.api.client.util.Key <fields>;
-}
--keep class com.google.api.services.drive.** { *; }
--dontwarn com.google.api.client.**
--dontwarn com.google.api.services.drive.**
